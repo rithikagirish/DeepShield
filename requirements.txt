@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+tensorflow
+efficientnet
+opencv-python-headless
+librosa
+scikit-learn
+numpy
+pandas

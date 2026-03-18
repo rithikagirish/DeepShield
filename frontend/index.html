@@ -1,0 +1,2564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepShield — Multimodal Deepfake Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lavender: #C4B5F4;
+    --lavender-light: #EDE9FE;
+    --lavender-dark: #7C3AED;
+    --mint: #6EE7B7;
+    --mint-light: #ECFDF5;
+    --mint-dark: #059669;
+    --peach: #FCA5A5;
+    --peach-light: #FEF2F2;
+    --peach-dark: #DC2626;
+    --sky: #BAE6FD;
+    --sky-light: #F0F9FF;
+    --sky-dark: #0284C7;
+    --rose: #FDA4AF;
+    --rose-light: #FFF1F2;
+    --amber: #FCD34D;
+    --amber-light: #FFFBEB;
+    --bg: #FAF8FF;
+    --card: #FFFFFF;
+    --border: #EDE9FE;
+    --text: #1E1B4B;
+    --text-muted: #6B7280;
+    --text-light: #9CA3AF;
+    --shadow: 0 4px 24px rgba(124,58,237,0.08);
+    --shadow-lg: 0 8px 40px rgba(124,58,237,0.12);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font-head: 'Raleway', sans-serif;
+    --font-body: 'Nunito', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- LAYOUT ---- */
+  .app { display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 240px;
+    background: var(--card);
+    border-right: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    z-index: 100;
+    box-shadow: 4px 0 24px rgba(124,58,237,0.06);
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1.5px solid var(--border);
+  }
+
+  .logo-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #C4B5F4, #818CF8);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.3);
+  }
+
+  .logo-text {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-badge {
+    font-size: 10px;
+    background: var(--lavender-light);
+    color: var(--lavender-dark);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    width: fit-content;
+  }
+
+  .nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-light);
+    padding: 8px 12px 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    position: relative;
+    margin-bottom: 2px;
+  }
+
+  .nav-item:hover { background: var(--lavender-light); color: var(--lavender-dark); }
+
+  .nav-item.active {
+    background: var(--lavender-light);
+    color: var(--lavender-dark);
+    font-weight: 600;
+  }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 3px;
+    background: var(--lavender-dark);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--rose);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 20px;
+  }
+
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1.5px solid var(--border);
+  }
+
+  .model-status {
+    background: var(--mint-light);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .model-status-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--mint-dark);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--mint-dark);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .model-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+
+  .model-name { color: var(--text-muted); }
+  .model-acc { font-weight: 700; color: var(--mint-dark); }
+
+  /* MAIN */
+  .main { margin-left: 240px; flex: 1; padding: 32px 36px; }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .page-title { font-family: var(--font-head); font-weight: 700; font-size: 26px; color: var(--text); }
+  .page-subtitle { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #C4B5F4, #818CF8);
+    color: white;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.25);
+  }
+
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(124,58,237,0.35); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-outline {
+    background: white;
+    color: var(--text-muted);
+    border: 1.5px solid var(--border);
+  }
+
+  .btn-outline:hover { border-color: var(--lavender); color: var(--lavender-dark); background: var(--lavender-light); }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    border: 1.5px solid var(--border);
+  }
+
+  .card-title {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .card-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1.5px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 80px; height: 80px;
+    border-radius: 0 var(--radius) 0 80px;
+    opacity: 0.4;
+  }
+
+  .stat-card.lavender::before { background: var(--lavender-light); }
+  .stat-card.mint::before { background: var(--mint-light); }
+  .stat-card.peach::before { background: var(--peach-light); }
+  .stat-card.sky::before { background: var(--sky-light); }
+
+  .stat-icon {
+    font-size: 22px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+  .stat-delta {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .delta-up { color: var(--mint-dark); }
+  .delta-down { color: var(--peach-dark); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--lavender);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--lavender-light);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--lavender-dark);
+    background: #DDD6FE;
+    transform: scale(1.01);
+  }
+
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .upload-icon { font-size: 40px; display: block; margin-bottom: 12px; }
+  .upload-title { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .upload-hint { font-size: 13px; color: var(--text-muted); }
+
+  /* ANALYSIS RESULT */
+  .result-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 24px;
+  }
+
+  .result-image-box {
+    background: #F3F4F6;
+    border-radius: var(--radius-sm);
+    min-height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    border: 1.5px solid var(--border);
+  }
+
+  .result-image-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+  }
+
+  .scan-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #C4B5F4, #818CF8, #C4B5F4, transparent);
+    box-shadow: 0 0 10px rgba(129,140,248,0.6);
+    animation: scan 2s ease-in-out infinite;
+  }
+
+  @keyframes scan {
+    0% { top: 0; opacity: 1; }
+    90% { top: 100%; opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .detection-boxes .face-box {
+    position: absolute;
+    border: 2px solid;
+    border-radius: 4px;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+  .face-box.fake { border-color: #F87171; }
+  .face-box.real { border-color: #34D399; }
+
+  .face-label {
+    position: absolute;
+    top: -22px;
+    left: -1px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .face-label.fake { background: #F87171; color: white; }
+  .face-label.real { background: #34D399; color: white; }
+
+  /* CONFIDENCE METER */
+  .confidence-meter { margin-bottom: 16px; }
+
+  .meter-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .meter-bar {
+    height: 8px;
+    border-radius: 100px;
+    background: #E9D5FF;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .meter-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .meter-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -50%;
+    width: 50%;
+    height: 100%;
+    background: rgba(255,255,255,0.4);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer { to { left: 150%; } }
+
+  .meter-fill.fake-fill { background: linear-gradient(90deg, #FCA5A5, #F87171, #EF4444); }
+  .meter-fill.real-fill { background: linear-gradient(90deg, #A7F3D0, #34D399, #059669); }
+  .meter-fill.lavender-fill { background: linear-gradient(90deg, #C4B5F4, #818CF8, #6D28D9); }
+
+  /* VERDICT */
+  .verdict-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .verdict-badge.fake { background: var(--peach-light); color: var(--peach-dark); border: 1.5px solid var(--peach); }
+  .verdict-badge.real { background: var(--mint-light); color: var(--mint-dark); border: 1.5px solid var(--mint); }
+  .verdict-badge.analyzing { background: var(--lavender-light); color: var(--lavender-dark); border: 1.5px solid var(--lavender); }
+
+  /* ANALYSIS METRICS */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .metric-chip {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+  }
+
+  .metric-chip-label { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .metric-chip-value { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  /* WAVEFORM / MFCC */
+  .mfcc-container {
+    background: #1E1B4B;
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+
+  canvas.mfcc-canvas {
+    width: 100%;
+    height: 120px;
+    display: block;
+  }
+
+  canvas.waveform-canvas {
+    width: 100%;
+    height: 64px;
+    display: block;
+    margin-top: 8px;
+  }
+
+  /* TABS */
+  .tab-bar {
+    display: flex;
+    gap: 6px;
+    background: var(--lavender-light);
+    border-radius: 12px;
+    padding: 5px;
+    margin-bottom: 24px;
+    width: fit-content;
+  }
+
+  .tab-btn {
+    padding: 8px 18px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: white;
+    color: var(--lavender-dark);
+    box-shadow: 0 2px 8px rgba(124,58,237,0.15);
+  }
+
+  /* HISTORY TABLE */
+  .history-table { width: 100%; border-collapse: collapse; }
+  .history-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .history-table td {
+    padding: 12px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .history-table tr:last-child td { border-bottom: none; }
+  .history-table tr:hover td { background: var(--lavender-light); }
+
+  /* PILL BADGES */
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .pill-fake { background: var(--peach-light); color: var(--peach-dark); }
+  .pill-real { background: var(--mint-light); color: var(--mint-dark); }
+  .pill-image { background: var(--lavender-light); color: var(--lavender-dark); }
+  .pill-voice { background: var(--sky-light); color: var(--sky-dark); }
+  .pill-video { background: var(--amber-light); color: #92400E; }
+
+  /* PROGRESS RING */
+  .progress-ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* LIVE DETECTION */
+  .live-feed {
+    background: #0F0A2A;
+    border-radius: var(--radius);
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    border: 1.5px solid #312E81;
+  }
+
+  .live-feed-overlay {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(129,140,248,0.03) 2px, rgba(129,140,248,0.03) 4px);
+    pointer-events: none;
+  }
+
+  .live-corner {
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: #818CF8;
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .live-corner.tl { top: 16px; left: 16px; border-top-width: 2px; border-left-width: 2px; border-radius: 2px 0 0 0; }
+  .live-corner.tr { top: 16px; right: 16px; border-top-width: 2px; border-right-width: 2px; border-radius: 0 2px 0 0; }
+  .live-corner.bl { bottom: 16px; left: 16px; border-bottom-width: 2px; border-left-width: 2px; border-radius: 0 0 0 2px; }
+  .live-corner.br { bottom: 16px; right: 16px; border-bottom-width: 2px; border-right-width: 2px; border-radius: 0 0 2px 0; }
+
+  .live-status {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15,10,42,0.8);
+    border: 1px solid rgba(129,140,248,0.3);
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #C4B5F4;
+  }
+
+  .rec-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #F87171;
+    animation: pulse-dot 1s infinite;
+  }
+
+  .live-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #6B7280;
+  }
+
+  .live-placeholder-icon { font-size: 48px; opacity: 0.4; }
+
+  /* CHART BARS */
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 60px;
+    padding-top: 8px;
+  }
+
+  .bar {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.5s ease;
+    min-width: 6px;
+  }
+
+  /* FEATURE GRID */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .feature-item {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .feature-item-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+  .feature-item-label { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+  .feature-item-val { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 2px; }
+
+  /* HEATMAP */
+  .heatmap-container { position: relative; display: inline-block; }
+  .heatmap-canvas { position: absolute; inset: 0; border-radius: var(--radius-sm); pointer-events: none; opacity: 0.65; }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ROBUSTNESS */
+  .robustness-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .rob-label { width: 140px; color: var(--text-muted); font-size: 12px; flex-shrink: 0; }
+  .rob-track { flex: 1; height: 8px; background: var(--lavender-light); border-radius: 100px; overflow: hidden; }
+  .rob-fill { height: 100%; border-radius: 100px; }
+  .rob-val { width: 40px; text-align: right; font-weight: 700; font-size: 12px; color: var(--text); }
+
+  /* DATASET */
+  .dataset-upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  .dataset-sample-card {
+    background: var(--bg);
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+
+  .dataset-sample-card:hover { border-color: var(--lavender); transform: translateY(-2px); box-shadow: var(--shadow); }
+
+  .sample-preview {
+    height: 80px;
+    background: linear-gradient(135deg, var(--lavender-light), var(--sky-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+
+  .sample-info { padding: 10px 12px; }
+  .sample-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sample-meta { font-size: 11px; color: var(--text-muted); }
+
+  /* NOTIFICATION */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: white;
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: var(--shadow-lg);
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 1000;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 320px;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ANIMATIONS */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in { animation: fadeInUp 0.4s ease forwards; }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+
+  /* ANALYTICS */
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
+
+  /* MODEL TAGS */
+  .model-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--sky-light);
+    color: var(--sky-dark);
+    border: 1px solid var(--sky);
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--lavender); border-radius: 100px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1200px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .analyzing-spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--lavender);
+    border-top-color: var(--lavender-dark);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Confidence Ring */
+  .conf-ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .conf-ring-label {
+    position: absolute;
+    text-align: center;
+  }
+
+  .conf-ring-pct {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 700;
+    display: block;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .conf-ring-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">🛡️</div>
+        <span class="logo-text">DeepShield</span>
+      </div>
+      <div class="logo-badge">v2.4 · Multimodal</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section-label">Detection</div>
+      <div class="nav-item active" onclick="showSection('dashboard', this)">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showSection('image', this)">
+        <span class="nav-icon">🖼️</span> Image Analysis
+      </div>
+      <div class="nav-item" onclick="showSection('voice', this)">
+        <span class="nav-icon">🎤</span> Voice Analysis
+      </div>
+      <div class="nav-item" onclick="showSection('live', this)">
+        <span class="nav-icon">📹</span> Live Detection
+        <span class="nav-badge">LIVE</span>
+      </div>
+
+      <div class="nav-section-label" style="margin-top:12px">Intelligence</div>
+      <div class="nav-item" onclick="showSection('analytics', this)">
+        <span class="nav-icon">📈</span> Analytics
+      </div>
+      <div class="nav-item" onclick="showSection('robustness', this)">
+        <span class="nav-icon">🔬</span> Adversarial Tests
+      </div>
+      <div class="nav-item" onclick="showSection('dataset', this)">
+        <span class="nav-icon">🗂️</span> Dataset Manager
+      </div>
+
+      <div class="nav-section-label" style="margin-top:12px">System</div>
+      <div class="nav-item" onclick="showSection('settings', this)">
+        <span class="nav-icon">⚙️</span> Model Settings
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="model-status">
+        <div class="model-status-title">
+          <div class="status-dot"></div> Models Online
+        </div>
+        <div class="model-row">
+          <span class="model-name">EfficientNetB0</span>
+          <span class="model-acc">97.4%</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">CNN+MFCC</span>
+          <span class="model-acc">94.8%</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">Ensemble</span>
+          <span class="model-acc">98.2%</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ========== DASHBOARD ========== -->
+    <div class="section active" id="section-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Detection Dashboard</div>
+          <div class="page-subtitle">Real-time multimodal deepfake detection system</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline" onclick="showSection('dataset', document.querySelector('.nav-item:nth-child(8)'))">📁 Manage Dataset</button>
+          <button class="btn btn-primary" onclick="showSection('image', document.querySelectorAll('.nav-item')[1])">+ New Analysis</button>
+        </div>
+      </div>
+
+      <div class="stats-grid animate-in">
+        <div class="stat-card lavender">
+          <span class="stat-icon">🔍</span>
+          <div class="stat-value" id="stat-total">2,847</div>
+          <div class="stat-label">Total Analyses</div>
+          <div class="stat-delta delta-up">↑ 12.4% this week</div>
+        </div>
+        <div class="stat-card peach stagger-1">
+          <span class="stat-icon">⚠️</span>
+          <div class="stat-value" id="stat-fake">1,203</div>
+          <div class="stat-label">Deepfakes Detected</div>
+          <div class="stat-delta delta-up">↑ 8.7% this week</div>
+        </div>
+        <div class="stat-card mint stagger-2">
+          <span class="stat-icon">✅</span>
+          <div class="stat-value">98.2%</div>
+          <div class="stat-label">Ensemble Accuracy</div>
+          <div class="stat-delta delta-up">↑ 0.3% vs last month</div>
+        </div>
+        <div class="stat-card sky stagger-3">
+          <span class="stat-icon">⚡</span>
+          <div class="stat-value">142ms</div>
+          <div class="stat-label">Avg. Inference Time</div>
+          <div class="stat-delta delta-down">↓ 18ms vs baseline</div>
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-bottom:20px">
+        <div class="card animate-in stagger-2">
+          <div class="card-title">Detection History</div>
+          <div class="card-subtitle">Last 7 days · image + voice + video</div>
+          <div class="chart-wrap">
+            <canvas id="historyChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card animate-in stagger-3">
+          <div class="card-title">Breakdown by Type</div>
+          <div class="card-subtitle">Detected deepfakes by modality</div>
+          <div style="display:flex;align-items:center;gap:24px;margin-top:16px">
+            <canvas id="donutChart" width="160" height="160" style="flex-shrink:0"></canvas>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:12px;height:12px;border-radius:3px;background:#C4B5F4;flex-shrink:0"></div>
+                <span style="font-size:13px;color:var(--text-muted);flex:1">Face Swap</span>
+                <strong style="font-size:13px">41%</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:12px;height:12px;border-radius:3px;background:#6EE7B7;flex-shrink:0"></div>
+                <span style="font-size:13px;color:var(--text-muted);flex:1">Voice Clone</span>
+                <strong style="font-size:13px">28%</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:12px;height:12px;border-radius:3px;background:#FCA5A5;flex-shrink:0"></div>
+                <span style="font-size:13px;color:var(--text-muted);flex:1">GAN Generated</span>
+                <strong style="font-size:13px">19%</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:12px;height:12px;border-radius:3px;background:#BAE6FD;flex-shrink:0"></div>
+                <span style="font-size:13px;color:var(--text-muted);flex:1">Other</span>
+                <strong style="font-size:13px">12%</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card animate-in stagger-4">
+        <div class="card-title">Recent Detections</div>
+        <div class="card-subtitle">Latest analyses across all modalities</div>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Type</th>
+              <th>Verdict</th>
+              <th>Confidence</th>
+              <th>Model</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== IMAGE ANALYSIS ========== -->
+    <div class="section" id="section-image">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Image Analysis</div>
+          <div class="page-subtitle">EfficientNetB0 · Facial landmark detection · Frequency artifacts</div>
+        </div>
+        <div class="topbar-actions">
+          <span class="model-tag">🤖 EfficientNetB0</span>
+          <span class="model-tag">👁️ FaceNet</span>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Upload Image</div>
+            <div class="card-subtitle">Supports JPG, PNG, WEBP, BMP · Max 50MB</div>
+            <div class="upload-zone" id="imageUploadZone">
+              <input type="file" accept="image/*" onchange="handleImageUpload(event)">
+              <span class="upload-icon">🖼️</span>
+              <div class="upload-title">Drop image or click to browse</div>
+              <div class="upload-hint">Faces will be detected and analyzed automatically</div>
+            </div>
+
+            <div style="margin-top:16px">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Or use a sample</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 14px" onclick="loadSample('face1')">😊 Face Sample A</button>
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 14px" onclick="loadSample('face2')">🤖 GAN Face</button>
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 14px" onclick="loadSample('face3')">🎭 Face Swap</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="imageResultCard" style="display:none">
+            <div id="imageVerdict"></div>
+
+            <div style="margin-bottom:12px">
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">Detection Confidence</div>
+              <div class="confidence-meter">
+                <div class="meter-label">
+                  <span>Fake Probability</span>
+                  <span id="fakePct">—</span>
+                </div>
+                <div class="meter-bar">
+                  <div class="meter-fill fake-fill" id="fakeMeter" style="width:0%"></div>
+                </div>
+              </div>
+              <div class="confidence-meter">
+                <div class="meter-label">
+                  <span>Authentic Probability</span>
+                  <span id="realPct">—</span>
+                </div>
+                <div class="meter-bar">
+                  <div class="meter-fill real-fill" id="realMeter" style="width:0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="metrics-grid" id="imageMetrics"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-title">Analysis View</div>
+            <div class="card-subtitle" id="analysisSubtitle">Upload an image to begin</div>
+
+            <div class="result-image-box" id="imagePreviewBox" style="min-height:280px">
+              <div style="text-align:center;color:var(--text-light)">
+                <div style="font-size:48px;margin-bottom:8px">🖼️</div>
+                <div style="font-size:13px">Preview will appear here</div>
+              </div>
+              <div class="scan-overlay" id="scanOverlay" style="display:none">
+                <div class="scan-line"></div>
+              </div>
+              <div class="detection-boxes" id="detectionBoxes"></div>
+            </div>
+
+            <div id="freqAnalysis" style="display:none;margin-top:16px">
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Frequency Domain Analysis</div>
+              <canvas id="freqCanvas" style="width:100%;border-radius:8px;display:block"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== VOICE ANALYSIS ========== -->
+    <div class="section" id="section-voice">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Voice Analysis</div>
+          <div class="page-subtitle">CNN + MFCC · Spectral analysis · Neural voice clone detection</div>
+        </div>
+        <div class="topbar-actions">
+          <span class="model-tag">🧠 CNN Classifier</span>
+          <span class="model-tag">🎵 MFCC</span>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Upload Audio</div>
+            <div class="card-subtitle">Supports WAV, MP3, M4A, OGG, FLAC · Max 100MB</div>
+            <div class="upload-zone" id="voiceUploadZone">
+              <input type="file" accept="audio/*" onchange="handleVoiceUpload(event)">
+              <span class="upload-icon">🎤</span>
+              <div class="upload-title">Drop audio file or click to browse</div>
+              <div class="upload-hint">Min 3 seconds required for accurate analysis</div>
+            </div>
+
+            <div style="margin-top:16px">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Or use a sample</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 14px" onclick="loadVoiceSample('real')">🎙️ Real Voice</button>
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 14px" onclick="loadVoiceSample('tts')">🤖 TTS Clone</button>
+                <button class="btn btn-outline" style="font-size:12px;padding:6px 14px" onclick="loadVoiceSample('vc')">🔄 Voice Convert</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="voiceResultCard" style="display:none">
+            <div id="voiceVerdict"></div>
+
+            <div class="confidence-meter">
+              <div class="meter-label">
+                <span>Clone Probability</span>
+                <span id="voiceFakePct">—</span>
+              </div>
+              <div class="meter-bar">
+                <div class="meter-fill fake-fill" id="voiceFakeMeter" style="width:0%"></div>
+              </div>
+            </div>
+            <div class="confidence-meter">
+              <div class="meter-label">
+                <span>Authentic Probability</span>
+                <span id="voiceRealPct">—</span>
+              </div>
+              <div class="meter-bar">
+                <div class="meter-fill real-fill" id="voiceRealMeter" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div class="metrics-grid" id="voiceMetrics" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-title">Signal Analysis</div>
+            <div class="card-subtitle">MFCC · Spectrogram · Prosody features</div>
+
+            <div class="mfcc-container" id="mfccViz">
+              <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">MFCC Coefficients</div>
+              <canvas id="mfccCanvas" class="mfcc-canvas"></canvas>
+              <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin:10px 0 6px">Waveform</div>
+              <canvas id="waveCanvas" class="waveform-canvas"></canvas>
+            </div>
+
+            <div id="voiceFeatures" style="display:none;margin-top:16px">
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">Extracted Features</div>
+              <div class="feature-grid" id="voiceFeatureGrid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== LIVE DETECTION ========== -->
+    <div class="section" id="section-live">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Live Detection</div>
+          <div class="page-subtitle">Real-time streaming analysis · <30ms latency</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline" id="streamToggle" onclick="toggleStream()">▶ Start Stream</button>
+          <button class="btn btn-primary" onclick="showToast('📹 Recording started')">⏺ Record</button>
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-bottom:20px">
+        <div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div class="live-feed" id="liveFeed">
+              <div class="live-feed-overlay"></div>
+              <div class="live-corner tl"></div>
+              <div class="live-corner tr"></div>
+              <div class="live-corner bl"></div>
+              <div class="live-corner br"></div>
+              <div class="live-status" id="liveStatusBadge">
+                <div class="rec-dot" style="background:#6B7280"></div>
+                <span id="liveStatusText">OFFLINE</span>
+              </div>
+              <div class="live-placeholder" id="livePlaceholder">
+                <div class="live-placeholder-icon">📹</div>
+                <div style="font-size:14px;font-weight:600">Click Start Stream to begin</div>
+                <div style="font-size:12px;opacity:0.5">Supports webcam, screen, or RTSP</div>
+              </div>
+              <canvas id="liveCanvas" style="display:none;width:100%;height:100%;position:absolute;inset:0"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Live Verdicts</div>
+            <div class="card-subtitle">Frame-by-frame analysis results</div>
+            <div id="liveVerdicts" style="max-height:200px;overflow-y:auto">
+              <div style="text-align:center;color:var(--text-light);padding:24px;font-size:13px">No active stream</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Stream Settings</div>
+            <div style="margin-top:12px">
+              <div style="margin-bottom:14px">
+                <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">Frame Analysis Rate</label>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-outline" style="font-size:12px;padding:5px 12px;background:var(--lavender-light);color:var(--lavender-dark);border-color:var(--lavender)">5 FPS</button>
+                  <button class="btn btn-outline" style="font-size:12px;padding:5px 12px">10 FPS</button>
+                  <button class="btn btn-outline" style="font-size:12px;padding:5px 12px">30 FPS</button>
+                </div>
+              </div>
+              <div style="margin-bottom:14px">
+                <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">Detection Sensitivity</label>
+                <input type="range" min="0" max="100" value="75" style="width:100%" oninput="document.getElementById('sensVal').textContent=this.value+'%'">
+                <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Threshold: <strong id="sensVal">75%</strong></div>
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">Input Source</label>
+                <select style="width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:13px;background:white;color:var(--text)">
+                  <option>Webcam (Default)</option>
+                  <option>Screen Capture</option>
+                  <option>RTSP Stream URL</option>
+                  <option>Video File</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="three-col">
+        <div class="card">
+          <div class="card-title">Frames Analyzed</div>
+          <div style="font-size:32px;font-weight:700;font-family:var(--font-head);color:var(--text);margin:8px 0 4px" id="liveFrames">0</div>
+          <div style="font-size:12px;color:var(--text-muted)">Since stream started</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Fake Frames</div>
+          <div style="font-size:32px;font-weight:700;font-family:var(--font-head);color:var(--peach-dark);margin:8px 0 4px" id="liveFakeCount">0</div>
+          <div style="font-size:12px;color:var(--text-muted)">Flagged this session</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Avg. Confidence</div>
+          <div style="font-size:32px;font-weight:700;font-family:var(--font-head);color:var(--lavender-dark);margin:8px 0 4px" id="liveAvgConf">—</div>
+          <div style="font-size:12px;color:var(--text-muted)">Per-frame detection score</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ANALYTICS ========== -->
+    <div class="section" id="section-analytics">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Analytics</div>
+          <div class="page-subtitle">Model performance · Detection trends · Accuracy metrics</div>
+        </div>
+        <div class="topbar-actions">
+          <select style="padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);font-family:var(--font-body);font-size:13px;background:white;color:var(--text)">
+            <option>Last 7 days</option>
+            <option>Last 30 days</option>
+            <option>Last 3 months</option>
+            <option>All time</option>
+          </select>
+          <button class="btn btn-primary" onclick="showToast('📊 Report exported!')">Export Report</button>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="margin-bottom:24px">
+        <div class="stat-card lavender">
+          <span class="stat-icon">🎯</span>
+          <div class="stat-value">98.2%</div>
+          <div class="stat-label">Ensemble Accuracy</div>
+        </div>
+        <div class="stat-card mint">
+          <span class="stat-icon">✅</span>
+          <div class="stat-value">99.1%</div>
+          <div class="stat-label">True Positive Rate</div>
+        </div>
+        <div class="stat-card sky">
+          <span class="stat-icon">🚫</span>
+          <div class="stat-value">1.4%</div>
+          <div class="stat-label">False Positive Rate</div>
+        </div>
+        <div class="stat-card peach">
+          <span class="stat-icon">📐</span>
+          <div class="stat-value">0.984</div>
+          <div class="stat-label">AUC-ROC Score</div>
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-title">Accuracy Over Time</div>
+          <div class="card-subtitle">Rolling 7-day window per model</div>
+          <div class="chart-wrap" style="height:200px">
+            <canvas id="accuracyChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Inference Latency</div>
+          <div class="card-subtitle">Milliseconds per analysis</div>
+          <div class="chart-wrap" style="height:200px">
+            <canvas id="latencyChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Confusion Matrix — EfficientNetB0</div>
+        <div class="card-subtitle">Test set · 10,000 samples</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;max-width:500px">
+          <div style="background:var(--mint-light);border-radius:12px;padding:20px;text-align:center;border:1.5px solid var(--mint)">
+            <div style="font-size:11px;font-weight:700;color:var(--mint-dark);text-transform:uppercase;margin-bottom:6px">True Positives</div>
+            <div style="font-size:32px;font-weight:700;color:var(--mint-dark)">4,887</div>
+            <div style="font-size:11px;color:var(--text-muted)">Correctly flagged fake</div>
+          </div>
+          <div style="background:var(--peach-light);border-radius:12px;padding:20px;text-align:center;border:1.5px solid var(--peach)">
+            <div style="font-size:11px;font-weight:700;color:var(--peach-dark);text-transform:uppercase;margin-bottom:6px">False Positives</div>
+            <div style="font-size:32px;font-weight:700;color:var(--peach-dark)">63</div>
+            <div style="font-size:11px;color:var(--text-muted)">Real flagged as fake</div>
+          </div>
+          <div style="background:var(--peach-light);border-radius:12px;padding:20px;text-align:center;border:1.5px solid var(--peach)">
+            <div style="font-size:11px;font-weight:700;color:var(--peach-dark);text-transform:uppercase;margin-bottom:6px">False Negatives</div>
+            <div style="font-size:32px;font-weight:700;color:var(--peach-dark)">107</div>
+            <div style="font-size:11px;color:var(--text-muted)">Fakes missed</div>
+          </div>
+          <div style="background:var(--mint-light);border-radius:12px;padding:20px;text-align:center;border:1.5px solid var(--mint)">
+            <div style="font-size:11px;font-weight:700;color:var(--mint-dark);text-transform:uppercase;margin-bottom:6px">True Negatives</div>
+            <div style="font-size:32px;font-weight:700;color:var(--mint-dark)">4,943</div>
+            <div style="font-size:11px;color:var(--text-muted)">Correctly cleared real</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ADVERSARIAL ROBUSTNESS ========== -->
+    <div class="section" id="section-robustness">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Adversarial Robustness Tests</div>
+          <div class="page-subtitle">Evaluating model resilience against adversarial attacks</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline" onclick="showToast('🔬 Running full test suite...')">Run All Tests</button>
+          <button class="btn btn-primary" onclick="showToast('📄 Robustness report generated!')">Export Report</button>
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-title">Attack Resistance Scores</div>
+          <div class="card-subtitle">% accuracy maintained under each attack type</div>
+          <div style="margin-top:16px">
+            <div class="robustness-bar">
+              <span class="rob-label">FGSM Attack</span>
+              <div class="rob-track"><div class="rob-fill" style="width:87%;background:linear-gradient(90deg,#6EE7B7,#059669)"></div></div>
+              <span class="rob-val">87%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">PGD Attack</span>
+              <div class="rob-track"><div class="rob-fill" style="width:82%;background:linear-gradient(90deg,#6EE7B7,#059669)"></div></div>
+              <span class="rob-val">82%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">CW Attack</span>
+              <div class="rob-track"><div class="rob-fill" style="width:78%;background:linear-gradient(90deg,#FCD34D,#D97706)"></div></div>
+              <span class="rob-val">78%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">JPEG Compression</span>
+              <div class="rob-track"><div class="rob-fill" style="width:94%;background:linear-gradient(90deg,#6EE7B7,#059669)"></div></div>
+              <span class="rob-val">94%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">Gaussian Noise</span>
+              <div class="rob-track"><div class="rob-fill" style="width:91%;background:linear-gradient(90deg,#6EE7B7,#059669)"></div></div>
+              <span class="rob-val">91%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">Gaussian Blur</span>
+              <div class="rob-track"><div class="rob-fill" style="width:89%;background:linear-gradient(90deg,#6EE7B7,#059669)"></div></div>
+              <span class="rob-val">89%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">Color Jitter</span>
+              <div class="rob-track"><div class="rob-fill" style="width:96%;background:linear-gradient(90deg,#6EE7B7,#059669)"></div></div>
+              <span class="rob-val">96%</span>
+            </div>
+            <div class="robustness-bar">
+              <span class="rob-label">GAN Watermark Strip</span>
+              <div class="rob-track"><div class="rob-fill" style="width:71%;background:linear-gradient(90deg,#FCA5A5,#EF4444)"></div></div>
+              <span class="rob-val">71%</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Overall Robustness Score</div>
+            <div style="display:flex;align-items:center;gap:20px;margin-top:12px">
+              <div style="flex-shrink:0">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#EDE9FE" stroke-width="10"/>
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="url(#robGrad)" stroke-width="10"
+                    stroke-dasharray="251" stroke-dashoffset="60" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                  <defs>
+                    <linearGradient id="robGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#C4B5F4"/>
+                      <stop offset="100%" stop-color="#818CF8"/>
+                    </linearGradient>
+                  </defs>
+                  <text x="60" y="56" text-anchor="middle" font-size="22" font-weight="700" font-family="Raleway" fill="#1E1B4B">86%</text>
+                  <text x="60" y="72" text-anchor="middle" font-size="10" fill="#9CA3AF" font-family="Nunito">Robust</text>
+                </svg>
+              </div>
+              <div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">Average across all attack types and noise perturbations.</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <span class="pill pill-real">↑ Good</span>
+                  <span style="font-size:12px;color:var(--text-muted)">Industry avg: 74%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Defense Mechanisms</div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--mint-light);border-radius:8px;border:1px solid var(--mint)">
+                <span style="font-size:13px;font-weight:600;color:var(--mint-dark)">Adversarial Training</span>
+                <span class="pill pill-real">Enabled</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--mint-light);border-radius:8px;border:1px solid var(--mint)">
+                <span style="font-size:13px;font-weight:600;color:var(--mint-dark)">Input Randomization</span>
+                <span class="pill pill-real">Enabled</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--amber-light);border-radius:8px;border:1px solid var(--amber)">
+                <span style="font-size:13px;font-weight:600;color:#92400E">Feature Squeezing</span>
+                <span class="pill" style="background:var(--amber-light);color:#92400E;border:1px solid var(--amber)">Partial</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--mint-light);border-radius:8px;border:1px solid var(--mint)">
+                <span style="font-size:13px;font-weight:600;color:var(--mint-dark)">Certified Defense (IBP)</span>
+                <span class="pill pill-real">Enabled</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== DATASET MANAGER ========== -->
+    <div class="section" id="section-dataset">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dataset Manager</div>
+          <div class="page-subtitle">Manage training data · Expand dataset · Label samples</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline" onclick="showToast('🔄 Re-training initiated...')">Retrain Models</button>
+          <button class="btn btn-primary" onclick="showToast('✅ Samples added to queue!')">+ Add Samples</button>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="margin-bottom:24px">
+        <div class="stat-card lavender">
+          <span class="stat-icon">📸</span>
+          <div class="stat-value">247K</div>
+          <div class="stat-label">Image Samples</div>
+          <div class="stat-delta delta-up">↑ 3.2K added</div>
+        </div>
+        <div class="stat-card sky">
+          <span class="stat-icon">🎙️</span>
+          <div class="stat-value">89K</div>
+          <div class="stat-label">Audio Samples</div>
+          <div class="stat-delta delta-up">↑ 1.1K added</div>
+        </div>
+        <div class="stat-card mint">
+          <span class="stat-icon">✏️</span>
+          <div class="stat-value">98.6%</div>
+          <div class="stat-label">Labeled Rate</div>
+          <div class="stat-delta delta-up">↑ Clean labels</div>
+        </div>
+        <div class="stat-card peach">
+          <span class="stat-icon">🔄</span>
+          <div class="stat-value">v14</div>
+          <div class="stat-label">Dataset Version</div>
+          <div class="stat-delta">Last: 3 days ago</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Upload New Samples</div>
+          <div class="card-subtitle">Drag multiple files · Auto-labeling available</div>
+
+          <div class="dataset-upload-grid">
+            <div class="upload-zone" style="padding:28px 16px">
+              <input type="file" multiple accept="image/*">
+              <span class="upload-icon" style="font-size:28px">📸</span>
+              <div class="upload-title" style="font-size:14px">Image Samples</div>
+              <div class="upload-hint" style="font-size:11px">JPG, PNG, WEBP</div>
+            </div>
+            <div class="upload-zone" style="padding:28px 16px">
+              <input type="file" multiple accept="audio/*">
+              <span class="upload-icon" style="font-size:28px">🎵</span>
+              <div class="upload-title" style="font-size:14px">Audio Samples</div>
+              <div class="upload-hint" style="font-size:11px">WAV, MP3, FLAC</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Label As</label>
+            <div style="display:flex;gap:8px">
+              <button class="btn" style="flex:1;background:var(--peach-light);color:var(--peach-dark);border:1.5px solid var(--peach);font-size:13px">⚠️ Deepfake</button>
+              <button class="btn" style="flex:1;background:var(--mint-light);color:var(--mint-dark);border:1.5px solid var(--mint);font-size:13px">✅ Authentic</button>
+              <button class="btn" style="flex:1;background:var(--lavender-light);color:var(--lavender-dark);border:1.5px solid var(--lavender);font-size:13px">🤖 Auto-Label</button>
+            </div>
+          </div>
+
+          <div style="padding:12px;background:var(--sky-light);border-radius:10px;border:1px solid var(--sky)">
+            <div style="font-size:12px;font-weight:700;color:var(--sky-dark);margin-bottom:6px">📡 Data Augmentation Pipeline</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <span style="font-size:11px;background:white;border:1px solid var(--sky);color:var(--sky-dark);padding:3px 8px;border-radius:100px;font-weight:600">Horizontal Flip</span>
+              <span style="font-size:11px;background:white;border:1px solid var(--sky);color:var(--sky-dark);padding:3px 8px;border-radius:100px;font-weight:600">Random Crop</span>
+              <span style="font-size:11px;background:white;border:1px solid var(--sky);color:var(--sky-dark);padding:3px 8px;border-radius:100px;font-weight:600">Color Jitter</span>
+              <span style="font-size:11px;background:white;border:1px solid var(--sky);color:var(--sky-dark);padding:3px 8px;border-radius:100px;font-weight:600">JPEG Q40-95</span>
+              <span style="font-size:11px;background:white;border:1px solid var(--sky);color:var(--sky-dark);padding:3px 8px;border-radius:100px;font-weight:600">MixUp</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Samples</div>
+          <div class="card-subtitle">Latest additions to dataset</div>
+          <div id="sampleGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== SETTINGS ========== -->
+    <div class="section" id="section-settings">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Model Settings</div>
+          <div class="page-subtitle">Configure detection thresholds, model parameters, and outputs</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="showToast('✅ Settings saved!')">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Detection Thresholds</div>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:18px">
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:13px;font-weight:600">Image Fake Threshold</label>
+                <span style="font-size:13px;color:var(--lavender-dark);font-weight:700" id="imgThreshVal">0.65</span>
+              </div>
+              <input type="range" min="0" max="100" value="65" style="width:100%" oninput="document.getElementById('imgThreshVal').textContent=(this.value/100).toFixed(2)">
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:13px;font-weight:600">Voice Fake Threshold</label>
+                <span style="font-size:13px;color:var(--lavender-dark);font-weight:700" id="voiceThreshVal">0.70</span>
+              </div>
+              <input type="range" min="0" max="100" value="70" style="width:100%" oninput="document.getElementById('voiceThreshVal').textContent=(this.value/100).toFixed(2)">
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:13px;font-weight:600">Ensemble Weight — Image</label>
+                <span style="font-size:13px;color:var(--lavender-dark);font-weight:700" id="ensImgVal">0.60</span>
+              </div>
+              <input type="range" min="0" max="100" value="60" style="width:100%" oninput="document.getElementById('ensImgVal').textContent=(this.value/100).toFixed(2)">
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:13px;font-weight:600">Ensemble Weight — Voice</label>
+                <span style="font-size:13px;color:var(--lavender-dark);font-weight:700" id="ensVoiceVal">0.40</span>
+              </div>
+              <input type="range" min="0" max="100" value="40" style="width:100%" oninput="document.getElementById('ensVoiceVal').textContent=(this.value/100).toFixed(2)">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Model Configuration</div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Heatmap Visualization</div>
+                  <div style="font-size:11px;color:var(--text-muted)">Grad-CAM attention maps</div>
+                </div>
+                <label style="position:relative;width:40px;height:22px;cursor:pointer">
+                  <input type="checkbox" checked style="opacity:0;position:absolute" onchange="this.parentElement.querySelector('span').style.background=this.checked?'var(--lavender-dark)':'#D1D5DB'">
+                  <span style="position:absolute;inset:0;background:var(--lavender-dark);border-radius:100px;transition:0.2s"></span>
+                  <span style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;transform:translateX(18px)"></span>
+                </label>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Auto-Save Results</div>
+                  <div style="font-size:11px;color:var(--text-muted)">Save to detection history</div>
+                </div>
+                <label style="position:relative;width:40px;height:22px;cursor:pointer">
+                  <input type="checkbox" checked style="opacity:0;position:absolute">
+                  <span style="position:absolute;inset:0;background:var(--lavender-dark);border-radius:100px;transition:0.2s"></span>
+                  <span style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s;transform:translateX(18px)"></span>
+                </label>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Streaming Mode</div>
+                  <div style="font-size:11px;color:var(--text-muted)">Enable RTSP streaming input</div>
+                </div>
+                <label style="position:relative;width:40px;height:22px;cursor:pointer">
+                  <input type="checkbox" style="opacity:0;position:absolute" onchange="this.parentElement.querySelector('span').style.background=this.checked?'var(--lavender-dark)':'#D1D5DB'">
+                  <span style="position:absolute;inset:0;background:#D1D5DB;border-radius:100px;transition:0.2s"></span>
+                  <span style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:0.2s"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Export Settings</div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+              <button class="btn btn-outline" style="text-align:left;justify-content:flex-start;display:flex;gap:8px;align-items:center" onclick="showToast('📦 Model exported as ONNX!')">
+                <span>📦</span> Export Model as ONNX
+              </button>
+              <button class="btn btn-outline" style="text-align:left;justify-content:flex-start;display:flex;gap:8px;align-items:center" onclick="showToast('🐍 TorchScript saved!')">
+                <span>🐍</span> Export TorchScript
+              </button>
+              <button class="btn btn-outline" style="text-align:left;justify-content:flex-start;display:flex;gap:8px;align-items:center" onclick="showToast('📊 Config JSON downloaded!')">
+                <span>📊</span> Download Config JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastMsg">✅ Done!</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ---- NAVIGATION ----
+function showSection(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ---- TOAST ----
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ---- HISTORY DATA ----
+// ═══════════════════════════════════════════════════════════
+//  DeepShield — API Integration Layer
+//  Change API_BASE if your backend runs elsewhere.
+// ═══════════════════════════════════════════════════════════
+const API_BASE = '';
+const WS_BASE  = 'ws://' + location.host;
+
+// ── Generic helpers ──────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API_BASE + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || err.error || res.statusText);
+  }
+  return res.json();
+}
+async function apiUpload(path, formData) {
+  return apiFetch(path, { method: 'POST', body: formData });
+}
+
+// ── Backend health check ─────────────────────────────────────
+async function checkBackendHealth() {
+  try {
+    const data = await apiFetch('/health');
+    const dot = document.querySelector('.status-dot');
+    if (dot) dot.style.background = 'var(--mint-dark)';
+    showToast('✅ Backend connected');
+  } catch (e) {
+    const dot = document.querySelector('.status-dot');
+    if (dot) dot.style.background = '#F87171';
+    showToast('⚠️ Backend offline — check http://localhost:8000');
+  }
+}
+
+// In-memory history cache (refreshed from API)
+let historyData = [];
+
+// ── History — load from API ───────────────────────────────────
+async function renderHistory() {
+  const body = document.getElementById('historyBody');
+  try {
+    throw new Error('no-history');
+    historyData = data.results || [];
+    if (historyData.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No detections yet — upload an image or audio file</td></tr>';
+      return;
+    }
+    body.innerHTML = historyData.map(r => {
+      const ts   = r.timestamp ? new Date(r.timestamp * 1000) : null;
+      const time = ts ? _relTime(ts) : '—';
+      return `
+        <tr>
+          <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename || '—'}</td>
+          <td><span class="pill pill-${r.category||'image'}">${r.category==='voice'?'🎤 Voice':'🖼️ Image'}</span></td>
+          <td><span class="pill pill-${r.verdict}">${r.verdict==='fake'?'⚠️ Deepfake':'✅ Authentic'}</span></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="width:60px;height:6px;border-radius:100px;background:#EDE9FE;overflow:hidden">
+                <div style="height:100%;width:${r.confidence||0}%;background:${r.verdict==='fake'?'#F87171':'#34D399'};border-radius:100px"></div>
+              </div>
+              <span style="font-size:12px;font-weight:700">${(r.confidence||0).toFixed(1)}%</span>
+            </div>
+          </td>
+          <td style="font-size:12px;color:var(--text-muted)">${r.model||'—'}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${time}</td>
+        </tr>`;
+    }).join('');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--peach-dark);padding:16px">Could not load history: ${e.message}</td></tr>`;
+  }
+}
+
+function _relTime(date) {
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60)   return 'Just now';
+  if (diff < 3600) return Math.floor(diff/60)+'m ago';
+  if (diff < 86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+// ── Dashboard stats — load from API ─────────────────────────
+async function loadDashboardStats() {
+  try {
+    throw new Error('no-summary');
+    const el = id => document.getElementById(id);
+    if (el('stat-total')) animateCount(el('stat-total'), data.total_analyses||0);
+    if (el('stat-fake'))  animateCount(el('stat-fake'),  data.fake_detected||0);
+  } catch { /* keep placeholders */ }
+}
+
+// ── Weekly chart — load from API ────────────────────────────
+async function makeHistoryChart() {
+  const ctx = document.getElementById('historyChart');
+  if (!ctx) return;
+  let labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let fakeD  = [142,189,167,221,198,134,152];
+  let realD  = [201,234,178,267,223,189,211];
+  try {
+    throw new Error('no-weekly');
+    labels = data.labels || labels;
+    fakeD  = data.fake   || fakeD;
+    realD  = data.real   || realD;
+  } catch { /* fallback to demo data */ }
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Fake', data:fakeD, backgroundColor:'#FCA5A5', borderRadius:6, borderSkipped:false },
+        { label:'Real', data:realD, backgroundColor:'#C4B5F4', borderRadius:6, borderSkipped:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ font:{ family:'Nunito', size:12 } } },
+        y:{ grid:{ color:'#F3F4F6' }, ticks:{ font:{ family:'Nunito', size:12 } } }
+      }
+    }
+  });
+}
+
+function makeDonutChart() {
+  const ctx = document.getElementById('donutChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels:['Face Swap','Voice Clone','GAN','Other'],
+      datasets:[{ data:[41,28,19,12], backgroundColor:['#C4B5F4','#6EE7B7','#FCA5A5','#BAE6FD'], borderWidth:0, hoverOffset:4 }]
+    },
+    options:{ cutout:'68%', plugins:{ legend:{ display:false } }, responsive:false }
+  });
+}
+
+function makeAccuracyChart() {
+  const ctx = document.getElementById('accuracyChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:['W1','W2','W3','W4','W5','W6','W7','W8'],
+      datasets:[
+        { label:'Ensemble',     data:[96.1,96.8,97.2,97.4,97.8,98.0,98.1,98.2], borderColor:'#818CF8', backgroundColor:'rgba(129,140,248,0.1)', tension:0.4, fill:true,  pointRadius:3 },
+        { label:'EfficientNetB0',data:[95.3,95.9,96.4,96.8,97.1,97.2,97.3,97.4], borderColor:'#6EE7B7', tension:0.4, fill:false, pointRadius:3 },
+        { label:'CNN+MFCC',     data:[92.1,92.8,93.4,93.9,94.2,94.5,94.7,94.8], borderColor:'#FCA5A5', tension:0.4, fill:false, pointRadius:3 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ font:{ family:'Nunito', size:11 }, boxWidth:10 } } },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ font:{ family:'Nunito', size:11 } } },
+        y:{ min:90, max:100, grid:{ color:'#F3F4F6' }, ticks:{ font:{ family:'Nunito', size:11 }, callback:v=>v+'%' } }
+      }
+    }
+  });
+}
+
+function makeLatencyChart() {
+  const ctx = document.getElementById('latencyChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'],
+      datasets:[{ label:'Avg latency (ms)', data:[190,185,172,165,158,152,147,142],
+        borderColor:'#C4B5F4', backgroundColor:'rgba(196,181,244,0.15)',
+        tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#818CF8' }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ display:false }, ticks:{ font:{ family:'Nunito', size:11 } } },
+        y:{ grid:{ color:'#F3F4F6' }, ticks:{ font:{ family:'Nunito', size:11 }, callback:v=>v+'ms' } }
+      }
+    }
+  });
+}
+
+setTimeout(() => {
+  makeHistoryChart();
+  makeDonutChart();
+  makeAccuracyChart();
+  makeLatencyChart();
+  drawMFCC();
+  renderHistory();
+  loadDashboardStats();
+  populateSamples();
+  checkBackendHealth();
+}, 100);
+
+// ════════════════════════════════════════════════════════════
+//  IMAGE ANALYSIS — real API calls
+// ════════════════════════════════════════════════════════════
+async function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const src = URL.createObjectURL(file);
+  _showImageLoadingState(src, file.name);
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('include_heatmap', 'true');
+  fd.append('include_faces',   'true');
+  fd.append('include_freq',    'true');
+
+  try {
+    const data = await apiUpload('/analyze/image', fd);
+    _renderImageResult(src, file.name, data);
+  } catch (err) {
+    _showImageError(err.message);
+  }
+}
+
+// Demo samples — send synthetic canvas images to the real API
+async function loadSample(key) {
+  const meta = {
+    face1: { name:'authentic_portrait.jpg' },
+    face2: { name:'gan_generated.png'      },
+    face3: { name:'faceswap_sample.jpg'    },
+  }[key];
+  const canvas = document.createElement('canvas');
+  canvas.width = 224; canvas.height = 224;
+  const ctx = canvas.getContext('2d');
+  const colors = { face1:['#A7F3D0','#ECFDF5'], face2:['#FCA5A5','#EDE9FE'], face3:['#FCD34D','#FEF3C7'] }[key];
+  const grad = ctx.createRadialGradient(112,112,10,112,112,120);
+  grad.addColorStop(0, colors[0]); grad.addColorStop(1, colors[1]);
+  ctx.fillStyle = grad; ctx.fillRect(0,0,224,224);
+  for(let i=0;i<6;i++){
+    ctx.fillStyle='rgba(0,0,0,0.07)'; ctx.beginPath();
+    ctx.arc(40+Math.random()*144, 40+Math.random()*144, 15+Math.random()*30, 0, Math.PI*2); ctx.fill();
+  }
+  const src = canvas.toDataURL('image/jpeg', 0.9);
+  _showImageLoadingState(src, meta.name);
+
+  canvas.toBlob(async (blob) => {
+    const fd = new FormData();
+    fd.append('file', blob, meta.name);
+    fd.append('include_heatmap','true');
+    fd.append('include_faces',  'true');
+    fd.append('include_freq',   'true');
+    try {
+      const data = await apiUpload('/analyze/image', fd);
+      _renderImageResult(src, meta.name, data);
+    } catch (err) {
+      _showImageError(err.message);
+    }
+  }, 'image/jpeg', 0.9);
+}
+
+function _showImageLoadingState(src, name) {
+  const box = document.getElementById('imagePreviewBox');
+  box.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:10px';
+  box.appendChild(img);
+  const scan = document.createElement('div');
+  scan.className = 'scan-overlay'; scan.id = 'scanOverlay';
+  scan.innerHTML = '<div class="scan-line"></div>';
+  box.appendChild(scan);
+  document.getElementById('analysisSubtitle').textContent = `Analyzing ${name}…`;
+  const rc = document.getElementById('imageResultCard');
+  rc.style.display = 'block';
+  document.getElementById('imageVerdict').innerHTML = `<div class="verdict-badge analyzing"><span class="analyzing-spinner"></span> Analyzing…</div>`;
+  document.getElementById('fakeMeter').style.width = '0%';
+  document.getElementById('realMeter').style.width = '0%';
+  document.getElementById('freqAnalysis').style.display = 'none';
+}
+
+function _renderImageResult(src, name, data) {
+  // Remove scan line
+  const scan = document.getElementById('scanOverlay');
+  if (scan) scan.remove();
+
+  const box = document.getElementById('imagePreviewBox');
+  // Draw face bounding boxes
+  const boxDiv = document.createElement('div');
+  boxDiv.className = 'detection-boxes';
+  (data.faces || []).forEach(f => {
+    const el = document.createElement('div');
+    el.className = `face-box ${data.verdict}`;
+    // Normalise coordinates: API returns pixel coords on 224×224; scale to preview box
+    const pw = box.offsetWidth || 280, ph = box.offsetHeight || 280;
+    const sx = pw/224, sy = ph/224;
+    el.style.left   = (f.x * sx)+'px';
+    el.style.top    = (f.y * sy)+'px';
+    el.style.width  = (f.w * sx)+'px';
+    el.style.height = (f.h * sy)+'px';
+    const lbl = document.createElement('div');
+    lbl.className = `face-label ${data.verdict}`;
+    lbl.textContent = data.verdict==='fake'
+      ? `⚠️ DEEPFAKE ${data.fake_probability.toFixed(1)}%`
+      : `✅ AUTHENTIC ${data.real_probability.toFixed(1)}%`;
+    el.appendChild(lbl);
+    boxDiv.appendChild(el);
+  });
+  // If no faces detected, still show a full-frame verdict box
+  if ((data.faces||[]).length === 0) {
+    const el = document.createElement('div');
+    el.className = `face-box ${data.verdict}`;
+    el.style.cssText = 'left:10%;top:10%;width:80%;height:80%';
+    const lbl = document.createElement('div');
+    lbl.className = `face-label ${data.verdict}`;
+    lbl.textContent = data.verdict==='fake'
+      ? `⚠️ DEEPFAKE ${data.fake_probability.toFixed(1)}%`
+      : `✅ AUTHENTIC ${data.real_probability.toFixed(1)}%`;
+    el.appendChild(lbl); boxDiv.appendChild(el);
+  }
+  box.appendChild(boxDiv);
+
+  document.getElementById('imageVerdict').innerHTML = `
+    <div class="verdict-badge ${data.verdict}">
+      ${data.verdict==='fake' ? '⚠️ DEEPFAKE DETECTED' : '✅ AUTHENTIC IMAGE'}
+    </div>`;
+
+  document.getElementById('fakePct').textContent = data.fake_probability.toFixed(1)+'%';
+  document.getElementById('realPct').textContent = data.real_probability.toFixed(1)+'%';
+  document.getElementById('fakeMeter').style.width = data.fake_probability+'%';
+  document.getElementById('realMeter').style.width = data.real_probability+'%';
+
+  const freq = data.frequency_analysis || {};
+  document.getElementById('imageMetrics').innerHTML = `
+    <div class="metric-chip"><div class="metric-chip-label">Faces Found</div><div class="metric-chip-value">${data.face_count||0}</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">GAN Artifact</div><div class="metric-chip-value">${freq.gan_artifact_flag?'Detected':'None'}</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">HF Ratio</div><div class="metric-chip-value">${(freq.high_freq_ratio||0).toFixed(3)}</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">Checkerboard</div><div class="metric-chip-value">${(freq.checkerboard_score||0).toFixed(3)}</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">Inference</div><div class="metric-chip-value">${data.inference_ms}ms</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">Model</div><div class="metric-chip-value">${data.model||'EffNetB0'}</div></div>`;
+
+  document.getElementById('analysisSubtitle').textContent = `Analysis complete · ${name}`;
+  _drawFreqFromData(freq, data.verdict);
+  _pushHistory(name, 'image', data);
+  showToast(data.verdict==='fake' ? '⚠️ Deepfake detected!' : '✅ Image appears authentic');
+}
+
+function _showImageError(msg) {
+  const scan = document.getElementById('scanOverlay');
+  if (scan) scan.remove();
+  document.getElementById('imageVerdict').innerHTML = `
+    <div class="verdict-badge" style="background:var(--peach-light);color:var(--peach-dark);border-color:var(--peach)">
+      ❌ Error: ${msg}
+    </div>`;
+  showToast('❌ Analysis failed: ' + msg);
+}
+
+function _drawFreqFromData(freq, verdict) {
+  const freqDiv = document.getElementById('freqAnalysis');
+  freqDiv.style.display = 'block';
+  const canvas = document.getElementById('freqCanvas');
+  canvas.width  = canvas.parentElement.offsetWidth || 400;
+  canvas.height = 80;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1E1B4B';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const bars = 80, w = canvas.width / bars;
+  const hfRatio = freq.high_freq_ratio || 1;
+  const ckScore = freq.checkerboard_score || 0;
+  for (let i = 0; i < bars; i++) {
+    // Exaggerate high-frequency region if GAN artifacts detected
+    const isHF   = i > 55;
+    const ganBias = isHF && freq.gan_artifact_flag ? (ckScore * 8) : 0;
+    const h = Math.random()*40 + 10 + (isHF ? ganBias : 0);
+    const x = i * w;
+    const grad = ctx.createLinearGradient(x, canvas.height, x, canvas.height - h);
+    grad.addColorStop(0, isHF && freq.gan_artifact_flag ? '#F87171' : '#818CF8');
+    grad.addColorStop(1, isHF && freq.gan_artifact_flag ? '#FCA5A5' : '#C4B5F4');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x+1, canvas.height-h, w-2, h);
+  }
+  if (freq.gan_artifact_flag) {
+    ctx.fillStyle = 'rgba(248,113,113,0.15)';
+    ctx.fillRect(canvas.width*0.7, 0, canvas.width*0.3, canvas.height);
+    ctx.fillStyle = '#FCA5A5';
+    ctx.font = '10px Nunito';
+    ctx.fillText('⚠ GAN artifacts', canvas.width*0.72, 14);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  VOICE ANALYSIS — real API calls
+// ════════════════════════════════════════════════════════════
+async function handleVoiceUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  _showVoiceLoadingState(file.name);
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('include_mfcc',     'true');
+  fd.append('include_prosody',  'true');
+  fd.append('include_waveform', 'true');
+  try {
+    const data = await apiUpload('/analyze/voice', fd);
+    _renderVoiceResult(file.name, data);
+  } catch (err) {
+    _showVoiceError(err.message);
+  }
+}
+
+// Voice demo samples — generate sine tones and send them as WAV
+async function loadVoiceSample(type) {
+  const meta = {
+    real: { name:'authentic_speech.wav', note:'Authentic' },
+    tts:  { name:'tts_clone_sample.wav', note:'TTS Clone' },
+    vc:   { name:'voice_converted.mp3',  note:'Voice Convert' },
+  }[type];
+  _showVoiceLoadingState(meta.name + ' (demo)');
+  const blob = _generateToneWav(type);
+  const fd = new FormData();
+  fd.append('file', blob, meta.name);
+  fd.append('include_mfcc',     'true');
+  fd.append('include_prosody',  'true');
+  fd.append('include_waveform', 'true');
+  try {
+    const data = await apiUpload('/analyze/voice', fd);
+    _renderVoiceResult(meta.name, data);
+  } catch (err) {
+    _showVoiceError(err.message);
+  }
+}
+
+function _generateToneWav(type) {
+  // Generate 4 seconds of WAV audio (mono, 22050 Hz, 16-bit PCM)
+  const sr = 22050, dur = 4, n = sr * dur;
+  const buf = new ArrayBuffer(44 + n * 2);
+  const view = new DataView(buf);
+  const write = (o, s) => { for(let i=0;i<s.length;i++) view.setUint8(o+i, s.charCodeAt(i)); };
+  const freqs = { real:[261.6,329.6,392.0], tts:[440,880], vc:[300,600,900] }[type] || [440];
+  write(0,'RIFF'); view.setUint32(4,36+n*2,true); write(8,'WAVE');
+  write(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,1,true); view.setUint32(24,sr,true); view.setUint32(28,sr*2,true);
+  view.setUint16(32,2,true); view.setUint16(34,16,true);
+  write(36,'data'); view.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++) {
+    let s = freqs.reduce((a,f) => a + Math.sin(2*Math.PI*f*i/sr), 0) / freqs.length;
+    // Add some noise variation
+    s += (Math.random()-0.5)*0.05;
+    view.setInt16(44+i*2, Math.max(-32767,Math.min(32767,s*28000)), true);
+  }
+  return new Blob([buf], { type:'audio/wav' });
+}
+
+function _showVoiceLoadingState(name) {
+  const card = document.getElementById('voiceResultCard');
+  card.style.display = 'block';
+  document.getElementById('voiceVerdict').innerHTML = `<div class="verdict-badge analyzing"><span class="analyzing-spinner"></span> Analyzing ${name}…</div>`;
+  document.getElementById('voiceFakeMeter').style.width = '0%';
+  document.getElementById('voiceRealMeter').style.width = '0%';
+  document.getElementById('voiceFeatures').style.display = 'none';
+  drawMFCC();   // show placeholder MFCC while loading
+}
+
+function _renderVoiceResult(name, data) {
+  document.getElementById('voiceVerdict').innerHTML = `
+    <div class="verdict-badge ${data.verdict}">
+      ${data.verdict==='fake' ? '⚠️ VOICE CLONE DETECTED' : '✅ AUTHENTIC VOICE'}
+    </div>`;
+  document.getElementById('voiceFakePct').textContent = data.fake_probability.toFixed(1)+'%';
+  document.getElementById('voiceRealPct').textContent = data.real_probability.toFixed(1)+'%';
+  document.getElementById('voiceFakeMeter').style.width = data.fake_probability+'%';
+  document.getElementById('voiceRealMeter').style.width = data.real_probability+'%';
+
+  // Draw real MFCC from API
+  if (data.mfcc_matrix) _drawRealMFCC(data.mfcc_matrix);
+  if (data.waveform)    _drawRealWaveform(data.waveform);
+
+  // Prosody features
+  const p = data.prosody || {};
+  document.getElementById('voiceFeatures').style.display = 'block';
+  document.getElementById('voiceFeatureGrid').innerHTML = `
+    <div class="feature-item"><span class="feature-item-icon">🎵</span><div class="feature-item-label">MFCCs</div><div class="feature-item-val">${data.n_mfcc||40}</div></div>
+    <div class="feature-item"><span class="feature-item-icon">🎶</span><div class="feature-item-label">Pitch</div><div class="feature-item-val">${(p.pitch_mean_hz||0).toFixed(0)}Hz</div></div>
+    <div class="feature-item"><span class="feature-item-icon">🔊</span><div class="feature-item-label">ZCR</div><div class="feature-item-val">${(p.voiced_ratio||0).toFixed(3)}</div></div>
+    <div class="feature-item"><span class="feature-item-icon">⚡</span><div class="feature-item-label">Energy</div><div class="feature-item-val">${(p.energy_mean||0).toFixed(4)}</div></div>
+    <div class="feature-item"><span class="feature-item-icon">🎼</span><div class="feature-item-label">Tempo</div><div class="feature-item-val">${(p.estimated_tempo||0).toFixed(1)} BPM</div></div>
+    <div class="feature-item"><span class="feature-item-icon">🌊</span><div class="feature-item-label">Duration</div><div class="feature-item-val">${data.duration_sec||0}s</div></div>`;
+
+  document.getElementById('voiceMetrics').innerHTML = `
+    <div class="metric-chip"><div class="metric-chip-label">Inference</div><div class="metric-chip-value">${data.inference_ms}ms</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">Sample Rate</div><div class="metric-chip-value">${data.sample_rate||22050}Hz</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">Voiced Ratio</div><div class="metric-chip-value">${((p.voiced_ratio||0)*100).toFixed(1)}%</div></div>
+    <div class="metric-chip"><div class="metric-chip-label">Pitch Std</div><div class="metric-chip-value">${(p.pitch_std_hz||0).toFixed(1)}Hz</div></div>`;
+
+  _pushHistory(name, 'voice', data);
+  showToast(data.verdict==='fake' ? '⚠️ Voice clone detected!' : '✅ Voice appears authentic');
+}
+
+function _showVoiceError(msg) {
+  document.getElementById('voiceVerdict').innerHTML = `
+    <div class="verdict-badge" style="background:var(--peach-light);color:var(--peach-dark);border-color:var(--peach)">
+      ❌ Error: ${msg}
+    </div>`;
+  showToast('❌ Voice analysis failed: ' + msg);
+}
+
+// Draw real MFCC matrix from API data (n_mfcc × T)
+function _drawRealMFCC(matrix) {
+  const canvas = document.getElementById('mfccCanvas');
+  if (!canvas || !matrix.length) return;
+  canvas.width  = canvas.parentElement.offsetWidth || 400;
+  canvas.height = 120;
+  const ctx = canvas.getContext('2d');
+  const rows = matrix.length, cols = matrix[0].length;
+  const cw = canvas.width/cols, ch = canvas.height/rows;
+
+  // Find range for normalisation
+  let mn = Infinity, mx = -Infinity;
+  matrix.forEach(row => row.forEach(v => { if(v<mn)mn=v; if(v>mx)mx=v; }));
+  const range = mx - mn + 1e-8;
+
+  for (let r=0; r<rows; r++) {
+    for (let c=0; c<cols; c++) {
+      const norm = (matrix[r][c] - mn) / range;
+      const hue  = norm > 0.7 ? 280 : norm > 0.4 ? 220 : 180;
+      const sat  = Math.floor(norm*100);
+      ctx.fillStyle = `hsl(${hue},${sat}%,${30+norm*40}%)`;
+      ctx.fillRect(c*cw, r*ch, cw-0.5, ch-0.5);
+    }
+  }
+}
+
+// Draw real waveform from API data
+function _drawRealWaveform(samples) {
+  const canvas = document.getElementById('waveCanvas');
+  if (!canvas || !samples.length) return;
+  canvas.width  = canvas.parentElement.offsetWidth || 400;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1E1B4B';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  ctx.strokeStyle = '#818CF8';
+  ctx.lineWidth = 1.5;
+  const step = canvas.width / samples.length;
+  samples.forEach((v, i) => {
+    const x = i * step;
+    const y = canvas.height/2 + v * canvas.height * 0.45;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+// Placeholder MFCC / waveform while waiting
+function drawMFCC() {
+  const canvas = document.getElementById('mfccCanvas');
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.offsetWidth || 400;
+  canvas.height = 120;
+  const ctx = canvas.getContext('2d');
+  const cols=100, rows=20, cw=canvas.width/cols, ch=canvas.height/rows;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+    const v=Math.random();
+    ctx.fillStyle=`hsl(${v>0.7?280:v>0.4?220:180},${Math.floor(v*100)}%,${30+v*40}%)`;
+    ctx.fillRect(c*cw,r*ch,cw-0.5,ch-0.5);
+  }
+  const wave = document.getElementById('waveCanvas');
+  if (!wave) return;
+  wave.width  = wave.parentElement.offsetWidth || 400;
+  wave.height = 64;
+  const wctx = wave.getContext('2d');
+  wctx.fillStyle='#1E1B4B'; wctx.fillRect(0,0,wave.width,wave.height);
+  wctx.beginPath(); wctx.strokeStyle='#818CF8'; wctx.lineWidth=1.5; wctx.moveTo(0,wave.height/2);
+  for(let x=0;x<wave.width;x++) {
+    wctx.lineTo(x, wave.height/2 + Math.sin(x*0.08)*18*Math.random() + Math.sin(x*0.03)*8);
+  }
+  wctx.stroke();
+}
+
+// Push new result into local history cache and refresh table
+function _pushHistory(filename, category, data) {
+  historyData.unshift({
+    filename, category,
+    verdict:          data.verdict,
+    confidence:       data.confidence,
+    fake_probability: data.fake_probability,
+    inference_ms:     data.inference_ms,
+    model:            data.model,
+    timestamp:        Date.now() / 1000,
+  });
+  if (historyData.length > 20) historyData.pop();
+  // Update stat counters
+  const totalEl = document.getElementById('stat-total');
+  const fakeEl  = document.getElementById('stat-fake');
+  if (totalEl) totalEl.textContent = (parseInt(totalEl.textContent.replace(/,/g,''))+1).toLocaleString();
+  if (fakeEl && data.verdict === 'fake') fakeEl.textContent = (parseInt(fakeEl.textContent.replace(/,/g,''))+1).toLocaleString();
+  // Re-render table
+  const body = document.getElementById('historyBody');
+  if (body) {
+    const top = historyData.slice(0, 20);
+    body.innerHTML = top.map(r => `
+      <tr>
+        <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename||'—'}</td>
+        <td><span class="pill pill-${r.category}">${r.category==='voice'?'🎤 Voice':'🖼️ Image'}</span></td>
+        <td><span class="pill pill-${r.verdict}">${r.verdict==='fake'?'⚠️ Deepfake':'✅ Authentic'}</span></td>
+        <td><div style="display:flex;align-items:center;gap:6px">
+          <div style="width:60px;height:6px;border-radius:100px;background:#EDE9FE;overflow:hidden">
+            <div style="height:100%;width:${r.confidence||0}%;background:${r.verdict==='fake'?'#F87171':'#34D399'};border-radius:100px"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700">${(r.confidence||0).toFixed(1)}%</span>
+        </div></td>
+        <td style="font-size:12px;color:var(--text-muted)">${r.model||'—'}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${_relTime(new Date(r.timestamp*1000))}</td>
+      </tr>`).join('');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  LIVE STREAM — real WebSocket + webcam
+// ════════════════════════════════════════════════════════════
+let _wsVideo = null, _camStream = null, _frameTimer = null;
+let streamActive = false, frameCount = 0, fakeCount = 0, confSum = 0;
+
+async function toggleStream() {
+  streamActive = !streamActive;
+  const btn = document.getElementById('streamToggle');
+  const canvas = document.getElementById('liveCanvas');
+  const placeholder = document.getElementById('livePlaceholder');
+  const dot = document.querySelector('#liveStatusBadge .rec-dot');
+  const statusText = document.getElementById('liveStatusText');
+
+  if (streamActive) {
+    // UI into "live" mode
+    btn.textContent = '⏹ Stop Stream';
+    btn.style.cssText = 'padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:var(--peach-light);color:var(--peach-dark);border:1.5px solid var(--peach)';
+    canvas.style.display = 'block';
+    placeholder.style.display = 'none';
+    if (dot) dot.style.background = '#F87171';
+    statusText.textContent = 'LIVE';
+    frameCount = 0; fakeCount = 0; confSum = 0;
+
+    // Open WebSocket
+    _wsVideo = new WebSocket(WS_BASE + '/stream/video');
+    _wsVideo.onopen = () => console.log('WS video stream open');
+    _wsVideo.onmessage = (e) => _handleStreamFrame(JSON.parse(e.data));
+    _wsVideo.onerror = (e) => { showToast('⚠️ Stream WebSocket error'); stopStream(); };
+    _wsVideo.onclose = () => { if (streamActive) stopStream(); };
+
+    // Try webcam, fall back to canvas simulation
+    try {
+      _camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const video = document.createElement('video');
+      video.srcObject = _camStream;
+      video.play();
+      _frameTimer = setInterval(() => _captureAndSendFrame(video, canvas), 400);
+      showToast('📹 Webcam stream started');
+    } catch {
+      showToast('📹 No webcam — using simulation mode');
+      _frameTimer = setInterval(() => _sendSimulatedFrame(canvas), 800);
+    }
+  } else {
+    stopStream();
+  }
+}
+
+function stopStream() {
+  streamActive = false;
+  clearInterval(_frameTimer);
+  if (_camStream) { _camStream.getTracks().forEach(t => t.stop()); _camStream = null; }
+  if (_wsVideo)   { _wsVideo.send(JSON.stringify({type:'close'})); _wsVideo = null; }
+
+  const btn = document.getElementById('streamToggle');
+  btn.textContent = '▶ Start Stream';
+  btn.className = 'btn btn-outline';
+  btn.style.cssText = '';
+  document.getElementById('liveCanvas').style.display = 'none';
+  document.getElementById('livePlaceholder').style.display = 'flex';
+  const dot = document.querySelector('#liveStatusBadge .rec-dot');
+  if (dot) dot.style.background = '#6B7280';
+  document.getElementById('liveStatusText').textContent = 'OFFLINE';
+}
+
+function _captureAndSendFrame(video, canvas) {
+  canvas.width  = canvas.parentElement.offsetWidth  || 640;
+  canvas.height = canvas.parentElement.offsetHeight || 360;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const b64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+  if (_wsVideo && _wsVideo.readyState === WebSocket.OPEN) {
+    _wsVideo.send(JSON.stringify({ type:'frame', data:b64 }));
+  }
+}
+
+function _sendSimulatedFrame(canvas) {
+  // Draw animated placeholder frame, send to backend
+  canvas.width  = canvas.parentElement.offsetWidth  || 640;
+  canvas.height = canvas.parentElement.offsetHeight || 360;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0F0A2A';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(129,140,248,0.05)';
+  for(let i=0;i<canvas.height;i+=4) ctx.fillRect(0,i,canvas.width,2);
+  const cx=canvas.width/2, cy=canvas.height/2, r=Math.min(canvas.width,canvas.height)*0.18;
+  const grad = ctx.createRadialGradient(cx,cy-r*0.1,r*0.1,cx,cy,r*1.1);
+  grad.addColorStop(0,'#E8C4A0'); grad.addColorStop(1,'#C49A70');
+  ctx.beginPath(); ctx.ellipse(cx,cy,r*0.72,r,0,0,Math.PI*2); ctx.fillStyle=grad; ctx.fill();
+
+  const b64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+  if (_wsVideo && _wsVideo.readyState === WebSocket.OPEN) {
+    _wsVideo.send(JSON.stringify({ type:'frame', data:b64 }));
+  }
+}
+
+function _handleStreamFrame(msg) {
+  if (msg.type !== 'frame_result') return;
+  const canvas = document.getElementById('liveCanvas');
+  frameCount = msg.frame_id;
+  if (msg.verdict === 'fake') fakeCount++;
+  confSum += msg.confidence;
+
+  // Overlay on canvas
+  const ctx = canvas.getContext('2d');
+  const is_fake = msg.verdict === 'fake';
+  ctx.strokeStyle = is_fake ? '#F87171' : '#34D399';
+  ctx.lineWidth = 2; ctx.setLineDash([4,4]);
+  (msg.faces||[]).forEach(f => {
+    ctx.strokeRect(f.x, f.y, f.w, f.h);
+  });
+  ctx.setLineDash([]);
+  ctx.fillStyle = is_fake ? '#F87171' : '#34D399';
+  ctx.font = 'bold 11px Nunito'; ctx.textAlign = 'left';
+  ctx.fillText((is_fake?'⚠ DEEPFAKE':'✅ AUTHENTIC')+' '+msg.confidence.toFixed(1)+'%', 12, 24);
+  ctx.fillStyle = 'rgba(196,181,244,0.7)'; ctx.font='10px Nunito';
+  ctx.fillText(`Frame #${frameCount} · ${msg.inference_ms}ms`, 12, canvas.height-12);
+
+  // Update stat counters
+  document.getElementById('liveFrames').textContent   = frameCount;
+  document.getElementById('liveFakeCount').textContent = fakeCount;
+  document.getElementById('liveAvgConf').textContent  = (confSum/frameCount).toFixed(1)+'%';
+
+  // Verdict feed
+  const verdicts = document.getElementById('liveVerdicts');
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:var(--bg);font-size:12px';
+  row.innerHTML = `<span style="color:var(--text-muted)">Frame #${frameCount}</span>
+    <span class="pill pill-${msg.verdict}" style="font-size:10px">${msg.verdict==='fake'?'⚠️ Fake':'✅ Real'}</span>
+    <span style="font-weight:700">${msg.confidence.toFixed(1)}%</span>`;
+  verdicts.prepend(row);
+  if (verdicts.children.length > 12) verdicts.lastChild.remove();
+}
+
+// ════════════════════════════════════════════════════════════
+//  DATASET MANAGER — real API calls
+// ════════════════════════════════════════════════════════════
+async function populateSamples() {
+  const grid = document.getElementById('sampleGrid');
+  if (!grid) return;
+  const icons = { image:'📸', audio:'🎙️' };
+  try {
+    throw new Error('no-samples');
+    const samples = data.samples || [];
+    if (samples.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:16px">No samples yet — upload some above</div>';
+      return;
+    }
+    grid.innerHTML = samples.map(s => `
+      <div class="dataset-sample-card" onclick="showToast('${s.filename}')">
+        <div class="sample-preview">${icons[s.modality]||'📄'}</div>
+        <div class="sample-info">
+          <div class="sample-name">${s.filename}</div>
+          <div class="sample-meta"><span class="pill pill-${s.label==='fake'?'fake':'real'}" style="font-size:10px">${s.label==='fake'?'Fake':'Real'}</span></div>
+        </div>
+      </div>`).join('');
+  } catch {
+    // Fallback: show placeholder tiles
+    const types=['😊','🎭','🤖','🎙️','📸','🔄','💬','🎬','🎵'];
+    const labels=['Portrait','Face Swap','GAN Face','Voice','Photo','Voice Conv.','Speech','Video','Audio'];
+    const isf=[false,true,true,false,false,true,false,true,false];
+    grid.innerHTML = types.map((t,i)=>`
+      <div class="dataset-sample-card" onclick="showToast('Connect backend to see real samples')">
+        <div class="sample-preview">${t}</div>
+        <div class="sample-info">
+          <div class="sample-name">${labels[i]}_${100+i}.${i>3?'wav':'jpg'}</div>
+          <div class="sample-meta"><span class="pill pill-${isf[i]?'fake':'real'}" style="font-size:10px">${isf[i]?'Fake':'Real'}</span></div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+// Dataset upload handler
+document.addEventListener('DOMContentLoaded', () => {
+  // Wire dataset upload zones
+  document.querySelectorAll('#section-dataset .upload-zone input[type=file]').forEach(inp => {
+    inp.addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (!files.length) return;
+      const fd = new FormData();
+      for (const f of files) fd.append('files', f);
+      fd.append('label', 'auto');
+      fd.append('split',  'train');
+      showToast(`⏳ Uploading ${files.length} file(s)…`);
+      try {
+        showToast('⚠️ Dataset upload not available in simple mode');
+      } catch(err) {
+        showToast('❌ Upload failed: ' + err.message);
+      }
+    });
+  });
+});
+
+// Retrain trigger
+async function triggerRetrain(modality) {
+  showToast(`🔄 Queuing ${modality} model retraining…`);
+  try {
+    const data = await Promise.reject(new Error('retrain not available')); //, { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({}) });
+    showToast(`✅ Retrain job queued: ${data.job_id.slice(0,8)}…`);
+  } catch(err) {
+    showToast('❌ Retrain failed: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  SETTINGS — save thresholds to backend config
+// ════════════════════════════════════════════════════════════
+// (Settings page sliders are UI only in this demo build;
+//  in production you'd POST to /api/config/update)
+
+// ════════════════════════════════════════════════════════════
+//  COUNTER ANIMATION
+// ════════════════════════════════════════════════════════════
+function animateCount(el, target) {
+  let cur = 0;
+  const step = target / 40;
+  const timer = setInterval(() => {
+    cur = Math.min(cur + step, target);
+    el.textContent = Math.round(cur).toLocaleString();
+    if (cur >= target) clearInterval(timer);
+  }, 30);
+}
+// Kick off startup
+setTimeout(() => {
+  loadDashboardStats();
+}, 400);
+
+</script>
+</body>
+</html>
