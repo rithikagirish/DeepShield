@@ -6,6 +6,14 @@ Detects deepfakes in images and audio using two trained models:
 
 ---
 
+## Language Composition
+
+This project is built with:
+- **HTML**: 90.9%
+- **Python**: 9.1%
+
+---
+
 ## Project Structure
 
 ```
@@ -67,4 +75,12 @@ Open **http://localhost:8000** in your browser.
 |--------|-------------------|-------------|----------------------------------|
 | POST   | `/analyze/image`  | image file  | verdict, fake %, face count      |
 | POST   | `/analyze/voice`  | audio file  | verdict, fake %, duration        |
-| GET    | `/health`         | —           | `{"status": "running"}`          |
+| GET    | `/health`         | —           | `{"status": "running"}`      |
+
+---
+
+## Repository Information
+
+- **Repository**: rithikagirish/DeepShield
+- **Repository ID**: 1185625485
+- **Last Updated**: 2026-03-18
